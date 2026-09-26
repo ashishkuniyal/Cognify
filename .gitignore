@@ -216,3 +216,9 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Project Specific
+venv_new/
+*.db
+mlruns/
+catboost_info/

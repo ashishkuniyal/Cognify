@@ -22,31 +22,37 @@ def save_object(file_path, obj):
     except Exception as e:
         raise CustomException(e, sys)
     
-def evaluate_models(X_train, y_train,X_test,y_test,models,param):
+import mlflow
+
+def evaluate_models(X_train, y_train, X_test, y_test, models, param):
     try:
         report = {}
 
         for i in range(len(list(models))):
+            model_name = list(models.keys())[i]
             model = list(models.values())[i]
-            para=param[list(models.keys())[i]]
+            para = param[model_name]
 
-            gs = GridSearchCV(model,para,cv=3)
-            gs.fit(X_train,y_train)
+            with mlflow.start_run(run_name=model_name, nested=True):
+                gs = GridSearchCV(model, para, cv=3)
+                gs.fit(X_train, y_train)
 
-            model.set_params(**gs.best_params_)
-            model.fit(X_train,y_train)
+                model.set_params(**gs.best_params_)
+                model.fit(X_train, y_train)
 
-            #model.fit(X_train, y_train)  # Train model
+                y_train_pred = model.predict(X_train)
+                y_test_pred = model.predict(X_test)
 
-            y_train_pred = model.predict(X_train)
+                train_model_score = r2_score(y_train, y_train_pred)
+                test_model_score = r2_score(y_test, y_test_pred)
 
-            y_test_pred = model.predict(X_test)
-
-            train_model_score = r2_score(y_train, y_train_pred)
-
-            test_model_score = r2_score(y_test, y_test_pred)
-
-            report[list(models.keys())[i]] = test_model_score
+                mlflow.log_params(gs.best_params_)
+                mlflow.log_metric("train_r2", train_model_score)
+                mlflow.log_metric("test_r2", test_model_score)
+                
+                # Optionally log the model if desired, but we will log the best one in model_trainer
+                
+                report[model_name] = test_model_score
 
         return report
 

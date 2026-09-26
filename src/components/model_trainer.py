@@ -48,7 +48,7 @@ class ModelTrainer:
             }
             params={
                 "Decision Tree": {
-                    'criterion':['squared_error', 'friedman_mse', 'absolute_error', 'poisson'],
+                    'criterion':['squared_error', 'absolute_error', 'poisson'],
                     # 'splitter':['best','random'],
                     # 'max_features':['sqrt','log2'],
                 },
@@ -84,32 +84,43 @@ class ModelTrainer:
                 
             }
 
-            model_report:dict=evaluate_models(X_train=X_train,y_train=y_train,X_test=X_test,y_test=y_test,
-                                             models=models,param=params)
+            import mlflow
+            import mlflow.sklearn
+
+            mlflow.set_experiment("Student_Performance_Prediction")
             
-            ## To get best model score from dict
-            best_model_score = max(sorted(model_report.values()))
+            with mlflow.start_run(run_name="Model_Training_Pipeline"):
+                model_report:dict=evaluate_models(X_train=X_train,y_train=y_train,X_test=X_test,y_test=y_test,
+                                                 models=models,param=params)
+                
+                ## To get best model score from dict
+                best_model_score = max(sorted(model_report.values()))
 
-            ## To get best model name from dict
+                ## To get best model name from dict
 
-            best_model_name = list(model_report.keys())[
-                list(model_report.values()).index(best_model_score)
-            ]
-            best_model = models[best_model_name]
+                best_model_name = list(model_report.keys())[
+                    list(model_report.values()).index(best_model_score)
+                ]
+                best_model = models[best_model_name]
 
-            if best_model_score<0.6:
-                raise CustomException("No best model found")
-            logging.info(f"Best found model on both training and testing dataset")
+                if best_model_score<0.6:
+                    raise CustomException("No best model found")
+                logging.info(f"Best found model on both training and testing dataset")
 
-            save_object(
-                file_path=self.model_trainer_config.trained_model_file_path,
-                obj=best_model
-            )
+                # Log the best model info and the model itself
+                mlflow.log_param("best_model_name", best_model_name)
+                mlflow.log_metric("best_model_r2_score", best_model_score)
+                mlflow.sklearn.log_model(best_model, "best_model")
 
-            predicted=best_model.predict(X_test)
+                save_object(
+                    file_path=self.model_trainer_config.trained_model_file_path,
+                    obj=best_model
+                )
 
-            r2_square = r2_score(y_test, predicted)
-            return r2_square
+                predicted=best_model.predict(X_test)
+
+                r2_square = r2_score(y_test, predicted)
+                return r2_square
             
 
 
