@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 import numpy as np
@@ -34,10 +34,6 @@ class PredictionLog(db.Model):
 # Create the database tables
 with app.app_context():
     db.create_all()
-
-@app.route('/')
-def index():
-    return render_template('index.html')
 
 @app.route('/api/predict', methods=['POST'])
 def predict_datapoint():
