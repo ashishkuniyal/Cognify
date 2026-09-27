@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, session
+﻿from flask import Flask, request, jsonify, session
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from flask_session import Session
@@ -15,7 +15,7 @@ from src.pipeline.predict_pipeline import CustomData, PredictPipeline
 
 application = Flask(__name__)
 app = application
-CORS(app, supports_credentials=True)  # Enable CORS with credentials for sessions
+CORS(app, supports_credentials=True, origins=["http://localhost:5173","http://localhost:4173","https://intelligent-ed-tech-platform.vercel.app"])
 
 # Configure Flask Session (SQLAlchemy-backed, works on cloud platforms)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'student-matrix-v2-secret-key-2024')
@@ -169,7 +169,7 @@ Your role:
         for turn in history:
             gemini_history.append(types.Content(role=turn['role'], parts=[types.Part(text=turn['text'])]))
         
-        # Model fallback cascade — try newer models first, fall back gracefully
+        # Model fallback cascade â€” try newer models first, fall back gracefully
         model_cascade = ['gemini-3.8-flash', 'gemini-3.5-flash', 'gemini-flash-latest']
         reply_text = None
         last_error = None
@@ -183,7 +183,7 @@ Your role:
                 )
                 response = chat_session.send_message(message)
                 reply_text = response.text
-                break  # Success — stop trying
+                break  # Success â€” stop trying
             except Exception as model_err:
                 last_error = model_err
                 err_str = str(model_err)
@@ -213,3 +213,4 @@ def reset_chat():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
+
