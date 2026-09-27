@@ -1,7 +1,8 @@
 {
-  "name": "frontend",
+  "name": "intelligent-edtech-platform",
+  "description": "AI-powered EdTech platform with multi-model ML pipeline and Gemini AI Counselor",
   "private": true,
-  "version": "0.0.0",
+  "version": "2.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
