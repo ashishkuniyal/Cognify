@@ -222,3 +222,10 @@ venv_new/
 *.db
 mlruns/
 catboost_info/
+
+# Deployment
+.flask_sessions/
+test_gemini.py
+frontend/.env
+frontend/.env.production
+frontend/dist/

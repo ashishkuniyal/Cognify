@@ -13,7 +13,7 @@ services:
       - ml-network
 
   frontend:
-    image: node:18-alpine
+    image: node:22-alpine
     working_dir: /app
     volumes:
       - ./frontend:/app

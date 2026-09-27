@@ -28,7 +28,7 @@ class DataTransformation:
         
         '''
         try:
-            numerical_columns = ["writing_score", "reading_score"]
+            numerical_columns = []
             categorical_columns = [
                 "gender",
                 "race_ethnicity",
@@ -37,35 +37,20 @@ class DataTransformation:
                 "test_preparation_course",
             ]
 
-            num_pipeline= Pipeline(
-                steps=[
-                ("imputer",SimpleImputer(strategy="median")),
-                ("scaler",StandardScaler())
-
-                ]
-            )
-
             cat_pipeline=Pipeline(
-
                 steps=[
                 ("imputer",SimpleImputer(strategy="most_frequent")),
                 ("one_hot_encoder",OneHotEncoder()),
                 ("scaler",StandardScaler(with_mean=False))
                 ]
-
             )
 
             logging.info(f"Categorical columns: {categorical_columns}")
-            logging.info(f"Numerical columns: {numerical_columns}")
 
             preprocessor=ColumnTransformer(
                 [
-                ("num_pipeline",num_pipeline,numerical_columns),
                 ("cat_pipelines",cat_pipeline,categorical_columns)
-
                 ]
-
-
             )
 
             return preprocessor
@@ -74,45 +59,51 @@ class DataTransformation:
             raise CustomException(e,sys)
         
     def initiate_data_transformation(self,train_path,test_path):
-
         try:
             train_df=pd.read_csv(train_path)
             test_df=pd.read_csv(test_path)
 
             logging.info("Read train and test data completed")
-
             logging.info("Obtaining preprocessing object")
 
             preprocessing_obj=self.get_data_transformer_object()
 
-            target_column_name="math_score"
-            numerical_columns = ["writing_score", "reading_score"]
+            target_columns = ["math_score", "reading_score", "writing_score"]
 
-            input_feature_train_df=train_df.drop(columns=[target_column_name])
-            target_feature_train_df=train_df[target_column_name]
+            input_feature_train_df=train_df.drop(columns=target_columns)
+            target_feature_train_df=train_df[target_columns]
+            
+            # Feature Engineering: At-Risk Target
+            at_risk_train = (target_feature_train_df.mean(axis=1) < 50).astype(int)
 
-            input_feature_test_df=test_df.drop(columns=[target_column_name])
-            target_feature_test_df=test_df[target_column_name]
+            input_feature_test_df=test_df.drop(columns=target_columns)
+            target_feature_test_df=test_df[target_columns]
+            
+            at_risk_test = (target_feature_test_df.mean(axis=1) < 50).astype(int)
 
-            logging.info(
-                f"Applying preprocessing object on training dataframe and testing dataframe."
-            )
+            logging.info("Applying preprocessing object on training and testing dataframe.")
 
             input_feature_train_arr=preprocessing_obj.fit_transform(input_feature_train_df)
             input_feature_test_arr=preprocessing_obj.transform(input_feature_test_df)
+            
+            # Convert to dense array if sparse
+            if hasattr(input_feature_train_arr, "toarray"):
+                input_feature_train_arr = input_feature_train_arr.toarray()
+            if hasattr(input_feature_test_arr, "toarray"):
+                input_feature_test_arr = input_feature_test_arr.toarray()
 
             train_arr = np.c_[
-                input_feature_train_arr, np.array(target_feature_train_df)
+                input_feature_train_arr, np.array(target_feature_train_df), np.array(at_risk_train)
             ]
-            test_arr = np.c_[input_feature_test_arr, np.array(target_feature_test_df)]
+            test_arr = np.c_[
+                input_feature_test_arr, np.array(target_feature_test_df), np.array(at_risk_test)
+            ]
 
             logging.info(f"Saved preprocessing object.")
 
             save_object(
-
                 file_path=self.data_transformation_config.preprocessor_obj_file_path,
                 obj=preprocessing_obj
-
             )
 
             return (
