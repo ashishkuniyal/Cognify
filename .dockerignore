@@ -1,0 +1,29 @@
+﻿# Python
+venv_new/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# ML Artifacts - include these in Docker for inference
+# artifacts/  <-- DO NOT ignore, models needed at runtime
+
+# Local dev databases and sessions
+predictions.db
+.flask_sessions/
+
+# Node / Frontend build (not needed in backend Docker image)
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.production
+
+# Environment / secrets
+.env
+
+# Logs and temp files
+logs/
+mlruns/
+catboost_info/
+test_gemini.py
+*.db
