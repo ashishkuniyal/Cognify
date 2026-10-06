@@ -1,4 +1,4 @@
-﻿name: CI/CD Docker Build
+name: CI/CD Docker Build
 
 on:
   push:
@@ -20,7 +20,7 @@ jobs:
     - name: Build Backend Docker Image
       uses: docker/build-push-action@v5
       with:
-        context: .
+        context: ./backend
         push: false
         tags: intelligent-edtech-platform:latest
         cache-from: type=gha
