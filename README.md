@@ -1,156 +1,150 @@
-# 🎓 Intelligent EdTech Platform
-### *Student Matrix V2 — Multi-Engine ML Architecture*
+# COGNIFY — AI-Powered Student Performance & Academic Risk Intelligence Platform
 
-[![Python](https://img.shields.io/badge/Python-3.11-blue?logo=python)](https://python.org)
-[![React](https://img.shields.io/badge/React-19-61dafb?logo=react)](https://reactjs.org)
-[![XGBoost](https://img.shields.io/badge/XGBoost-Multi--Output-orange)](https://xgboost.ai)
-[![Gemini](https://img.shields.io/badge/Gemini_AI-3.8_Flash-purple?logo=google)](https://ai.google.dev)
-[![Flask](https://img.shields.io/badge/Flask-REST_API-black?logo=flask)](https://flask.palletsprojects.com)
+## 1. Project Overview
+Cognify is a production-grade, end-to-end Machine Learning decision-support platform designed for educational institutions. Rather than simply predicting a student's score, Cognify acts as an **early-warning system** that identifies students at risk of academic failure, explains the prediction using advanced ML interpretability (SHAP), and recommends personalized interventions.
 
-> An enterprise-grade EdTech ML platform that predicts full academic potential across Math, Reading, and Writing simultaneously, identifies at-risk students, recommends career paths via K-Means clustering, and provides personalized guidance through a Gemini AI Counselor with multi-turn memory.
+## 2. The Real-World Problem
+Educational institutions often identify struggling students only *after* their grades have already dropped—when it is too late for effective intervention. Traditional prediction systems only offer binary "pass/fail" or raw score predictions without explaining *why* the student is at risk or *what* can be done to help them.
 
----
+## 3. The Solution
+Cognify solves this by providing **Academic Risk Intelligence**:
+- Estimates expected performance across multiple subjects (Math, Reading, Writing).
+- Classifies the student's risk level (LOW, MEDIUM, HIGH).
+- Explains the underlying causes for the risk using SHAP values.
+- Simulates hypothetical scenarios (What-If Simulator).
+- Prescribes targeted academic interventions based on detected behavioral weaknesses.
 
-## 🏗️ Architecture Overview
+## 4. System Architecture
+- **Frontend**: React, Tailwind CSS, Recharts (Dynamic Dashboard).
+- **Backend**: FastAPI (Python), RESTful APIs.
+- **ML Engine**: Scikit-Learn, XGBoost, Random Forest, SHAP.
+- **Database**: SQLite (SQLAlchemy) for prediction history and analytics.
+- **MLOps**: MLflow for experiment tracking and model registry.
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                   Intelligent EdTech Platform               │
-├─────────────────────────────────────────────────────────────┤
-│  Frontend (React + Vite)                                     │
-│  ├── Prediction Engine   (Radar Chart · 3-Score Output)      │
-│  ├── Live Analytics      (Area Chart · MLOps Drift Monitor)  │
-│  └── AI Counselor        (Gemini 3.8 Flash · Multi-turn)     │
-├─────────────────────────────────────────────────────────────┤
-│  Backend (Flask REST API)                                    │
-│  ├── /api/predict   → Multi-Output Regression + Prescriptive │
-│  ├── /api/analytics → SQLite inference logs                  │
-│  ├── /api/chat      → Gemini AI with session memory          │
-│  └── /api/chat/reset → Clear conversation history           │
-├─────────────────────────────────────────────────────────────┤
-│  ML Engines (3 Parallel Models)                              │
-│  ├── model_radar.pkl    → XGBoost MultiOutputRegressor       │
-│  ├── model_atrisk.pkl   → Random Forest Classifier           │
-│  └── model_cluster.pkl  → K-Means (3 Career Clusters)        │
-└─────────────────────────────────────────────────────────────┘
-```
+## 5. ML Pipeline
+1. **Data Ingestion**: Loads student demographic and behavioral data.
+2. **Data Validation & Preprocessing**: Handles missing values (SimpleImputer) and scales numerical data (StandardScaler).
+3. **Categorical Encoding**: One-Hot Encoding for demographic variables.
+4. **Feature Engineering**: Synthetic behavioral features generation to enrich demographic data.
+5. **Model Training**: Multi-Output Regression and Multi-Class Classification.
+6. **Evaluation & Serialization**: Validation with R², saving model artifacts to the `artifacts/` directory.
 
----
+## 6. Dataset
+The platform uses an augmented dataset built on top of traditional student performance datasets.
+- **Demographics**: Gender, Ethnicity, Parental Education, Lunch subsidy.
+- **Test Preparation**: Completion status of preparatory courses.
 
-## ✨ Features
+## 7. Feature Engineering
+Since demographic data alone is insufficient for a strong early-warning system, we engineered behavioral features:
+- **Attendance Rate (%)**: Correlation with academic consistency.
+- **Study Hours per Week**: Self-reported or logged study effort.
+- **Previous GPA**: Historical performance baseline.
+- **Assignment Completion Rate (%)**: Academic engagement indicator.
 
-| Feature | Description |
-|---------|-------------|
-| **Multi-Target Regression** | Predicts Math, Reading & Writing scores simultaneously using XGBoost |
-| **At-Risk Detection** | Random Forest Classifier flags students with high failure probability |
-| **Career Clustering** | K-Means groups students into STEM, Humanities, or Business tracks |
-| **AI Counselor** | Gemini 3.8 Flash chatbot with full multi-turn conversation memory |
-| **Prescriptive Advisor** | What-If simulation showing score boost from completing test prep |
-| **Live Analytics** | Real-time inference stream with data drift monitoring |
-| **Model Fallback** | Cascade failover across 3 Gemini models on 503 errors |
-| **Dark/Light Mode** | Full theme toggle with glassmorphism design |
+*Note: These behavioral features are synthetically generated for demonstration purposes. The system is designed to seamlessly integrate with real LMS (Learning Management System) data.*
 
----
+## 8. Models
+- **Performance Predictor**: XGBoost `MultiOutputRegressor` (Predicts Math, Reading, Writing, Overall Score).
+- **Risk Classifier**: `RandomForestClassifier` (Multi-class: LOW, MEDIUM, HIGH) with balanced class weights to handle imbalance.
+- **Career Clusterer**: `KMeans` clustering based on performance patterns.
+- **Anomaly Detector**: `IsolationForest` to flag unusual student profiles.
 
-## 🚀 Quick Start
+## 9. Evaluation
+- The Regression model is evaluated using **R²** and **RMSE**. 
+- The Risk Classifier prioritizes **Recall** to minimize false negatives (failing to identify an at-risk student).
+- Current Production R²: ~0.67 (A realistic metric for human behavioral data).
 
-### Backend
+## 10. SHAP Explainability
+Cognify implements **TreeExplainer** from the SHAP (SHapley Additive exPlanations) library to provide local interpretability. For every prediction, the platform identifies the `top_risk_factor` and its numerical impact, allowing educators to understand the *why* behind the AI's decision.
+
+## 11. Risk Classification
+Students are categorized into:
+- **LOW RISK**: On track for academic success.
+- **MEDIUM RISK**: Showing signs of academic struggle; monitor closely.
+- **HIGH RISK**: High probability of underperformance; immediate intervention required.
+
+## 12. What-If Simulation
+The frontend includes a dynamic "What-If" simulator that allows counselors to adjust behavioral features (e.g., increasing study hours or attendance) and instantly see the model's estimated outcome. This helps visualize the potential impact of an intervention.
+
+## 13. Personalized Intervention Engine
+Rather than generic advice, the prescriptive engine generates recommendations based on the student's specific weaknesses. For example:
+- If attendance < 80%: *"Improve attendance consistency."*
+- If study hours < 10: *"Increase weekly study hours."*
+
+## 14. API Documentation
+The backend exposes documented REST APIs:
+- `POST /api/v1/predict` - Run the full inference pipeline for a single student.
+- `POST /api/v1/predict/batch` - Run batch predictions (up to 50 profiles).
+- `GET /health` - API and model health status.
+
+*(Swagger UI available at `http://localhost:8000/docs`)*
+
+## 15. Database
+- **SQLite Database** (`cognify.db`) stores a complete audit log of all predictions via SQLAlchemy.
+- Stores inputs, predicted scores, risk levels, and SHAP factors for historical tracking and data drift analysis.
+
+## 16. Frontend
+A premium dark-themed React application featuring:
+- Dynamic form inputs and sliders.
+- Real-time Radar charts (Recharts).
+- Clear visualization of SHAP factors and AI recommendations.
+- Interactive AI Counselor chat interface.
+
+## 17. Installation
+
 ```bash
-# Create and activate virtual environment
-python -m venv venv
-venv\Scripts\activate      # Windows
-source venv/bin/activate   # macOS/Linux
+# Clone the repository
+git clone https://github.com/yourusername/Cognify.git
+cd Cognify
 
-# Install dependencies
+# Setup Backend
+cd backend
+python -m venv venv_new
+venv_new\Scripts\activate  # Windows
+source venv_new/bin/activate # Mac/Linux
 pip install -r requirements.txt
+cd ..
 
-# Set environment variables
-cp .env.example .env
-# Add your GEMINI_API_KEY to .env
-
-# Train the ML models
-python src/components/data_ingestion.py
-
-# Run the API server
-python app.py
-```
-
-### Frontend
-```bash
+# Setup Frontend
 cd frontend
 npm install
+cd ..
+```
 
-# Set API URL (create frontend/.env)
-echo "VITE_API_URL=http://localhost:5000" > .env
+## 18. Environment Variables
+Create a `.env` file in the `frontend` directory:
+```env
+VITE_API_URL=http://localhost:8000
+```
+Create a `.env` file in the `backend` directory (if deploying):
+```env
+ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
+```
 
+## 19. Running Locally
+
+**Terminal 1 (FastAPI Backend):**
+```bash
+cd backend
+python main.py
+# Server starts at http://localhost:8000
+```
+
+**Terminal 2 (React Frontend):**
+```bash
+cd frontend
 npm run dev
+# App starts at http://localhost:5173
 ```
 
----
+## 20. Screenshots
+*(Add screenshots of the Dashboard, What-If Simulator, and AI Counselor here)*
 
-## 📁 Project Structure
+## 21. Limitations
+- **Synthetic Data**: The behavioral features (`attendance`, `study_hours`) are synthetic, intended to demonstrate how the system would operate with real LMS data. Predictions should not be interpreted as causal.
+- **Predictive, Not Deterministic**: The model provides statistical estimates, not guarantees. It is a decision-*support* tool, not a replacement for human academic judgment.
 
-```
-intelligent-edtech-platform/
-├── artifacts/                  # Serialized ML models (.pkl)
-│   ├── model_radar.pkl         # Multi-Output XGBoost
-│   ├── model_atrisk.pkl        # Random Forest Classifier
-│   ├── model_cluster.pkl       # K-Means Clusterer
-│   └── preprocessor.pkl        # Feature transformer
-├── frontend/                   # React/Vite UI
-│   ├── src/
-│   │   ├── App.jsx             # Main application
-│   │   └── index.css           # Design system
-│   ├── .env                    # VITE_API_URL (local)
-│   └── package.json
-├── src/
-│   ├── components/
-│   │   ├── data_ingestion.py   # Training pipeline entry point
-│   │   ├── data_transformation.py # Feature engineering
-│   │   └── model_trainer.py    # 3-engine training
-│   └── pipeline/
-│       └── predict_pipeline.py # Inference orchestrator
-├── app.py                      # Flask REST API
-├── Procfile                    # Render deployment
-├── requirements.txt
-└── .env                        # GEMINI_API_KEY (backend)
-```
-
----
-
-## 🧠 ML Pipeline Details
-
-### Training
-The pipeline engineers `at_risk` (binary) and multi-target labels from the raw dataset, then trains three independent models:
-1. **XGBoost MultiOutputRegressor** → Predicts [Math, Reading, Writing] in a single pass
-2. **RandomForestClassifier** → Binary classification: at-risk (score < 50 threshold)
-3. **KMeans (k=3)** → Clusters predicted score profiles into career tracks
-
-### Inference
-`PredictPipeline` loads all three artifacts and runs them sequentially on incoming demographic data. A hidden **What-If Engine** simulates the `test_preparation_course=completed` scenario to calculate a personalized prescriptive score boost.
-
----
-
-## 🌐 Deployment
-
-- **Backend:** [Render](https://render.com) (Free tier) — uses `gunicorn` via `Procfile`
-- **Frontend:** [Vercel](https://vercel.com) (Free tier) — set `VITE_API_URL` env var to backend URL
-
-See [deployment_guide.md](./deployment_guide.md) for full step-by-step instructions.
-
----
-
-## 🛠️ Tech Stack
-
-| Layer | Technology |
-|-------|------------|
-| ML | XGBoost, scikit-learn, pandas, numpy |
-| Backend | Python 3.11, Flask, SQLAlchemy, Flask-Session |
-| AI | Google Gemini 3.8 Flash (`google-genai`) |
-| Frontend | React 19, Vite, Recharts, Framer Motion, Lucide |
-| Deployment | Render (backend), Vercel (frontend) |
-| Tracking | MLflow (local) |
-
----
-
-*Built as a portfolio project demonstrating full-stack ML engineering, from feature engineering to cloud deployment.*
+## 22. Future Improvements
+- Integrate Deep Knowledge Tracing (DKT) for temporal sequence modeling.
+- Implement live Data Drift monitoring using evidently.ai.
+- Connect directly to Canvas or Moodle LMS APIs for real-time data ingestion.

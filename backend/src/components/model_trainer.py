@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 from xgboost import XGBRegressor
 from sklearn.multioutput import MultiOutputRegressor
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier, IsolationForest
 from sklearn.cluster import KMeans
 from sklearn.metrics import r2_score, accuracy_score
 
@@ -18,6 +18,7 @@ class ModelTrainerConfig:
     radar_model_file_path=os.path.join("artifacts","model_radar.pkl")
     atrisk_model_file_path=os.path.join("artifacts","model_atrisk.pkl")
     cluster_model_file_path=os.path.join("artifacts","model_cluster.pkl")
+    anomaly_model_file_path=os.path.join("artifacts","model_anomaly.pkl")
 
 class ModelTrainer:
     def __init__(self):
@@ -27,15 +28,15 @@ class ModelTrainer:
         try:
             logging.info("Split training and test input data for V2")
             
-            # X features are all columns except the last 4 (math, reading, writing, at_risk)
-            X_train = train_array[:, :-4]
-            X_test = test_array[:, :-4]
+            # X features are all columns except the last 5 (math, reading, writing, overall, at_risk)
+            X_train = train_array[:, :-5]
+            X_test = test_array[:, :-5]
             
-            # Target 1: Radar (Math, Reading, Writing)
-            y_radar_train = train_array[:, -4:-1]
-            y_radar_test = test_array[:, -4:-1]
+            # Target 1: Radar (Math, Reading, Writing, Overall)
+            y_radar_train = train_array[:, -5:-1]
+            y_radar_test = test_array[:, -5:-1]
             
-            # Target 2: At-Risk (Binary)
+            # Target 2: At-Risk (Multiclass: LOW=0, MEDIUM=1, HIGH=2)
             y_atrisk_train = train_array[:, -1]
             y_atrisk_test = test_array[:, -1]
 
@@ -56,8 +57,8 @@ class ModelTrainer:
                 mlflow.log_metric("radar_r2_score", radar_r2)
                 
                 # 2. Train At-Risk Classifier
-                logging.info("Training At-Risk Classifier")
-                atrisk_model = RandomForestClassifier(n_estimators=100, random_state=42)
+                logging.info("Training At-Risk Classifier (Multiclass)")
+                atrisk_model = RandomForestClassifier(n_estimators=100, class_weight='balanced', random_state=42)
                 atrisk_model.fit(X_train, y_atrisk_train)
                 
                 atrisk_preds = atrisk_model.predict(X_test)
@@ -70,11 +71,17 @@ class ModelTrainer:
                 cluster_model = KMeans(n_clusters=3, random_state=42)
                 cluster_model.fit(y_radar_train)
 
+                # 4. Train Anomaly Detector (Isolation Forest)
+                logging.info("Training Anomaly Detector")
+                anomaly_model = IsolationForest(n_estimators=100, contamination=0.05, random_state=42)
+                anomaly_model.fit(X_train)
+
                 # Save all models
                 logging.info("Saving V2 Models")
                 save_object(file_path=self.model_trainer_config.radar_model_file_path, obj=radar_model)
                 save_object(file_path=self.model_trainer_config.atrisk_model_file_path, obj=atrisk_model)
                 save_object(file_path=self.model_trainer_config.cluster_model_file_path, obj=cluster_model)
+                save_object(file_path=self.model_trainer_config.anomaly_model_file_path, obj=anomaly_model)
                 
                 return radar_r2
 

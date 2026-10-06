@@ -2,11 +2,11 @@ version: '3.8'
 
 services:
   backend:
-    build: .
+    build: ./backend
     ports:
-      - "5000:5000"
+      - "8000:8000"
     volumes:
-      - .:/app
+      - ./backend:/app
     environment:
       - FLASK_ENV=development
     networks:
@@ -28,7 +28,7 @@ services:
     image: python:3.10-slim
     working_dir: /app
     volumes:
-      - ./mlruns:/app/mlruns
+      - ./backend/mlruns:/app/mlruns
     ports:
       - "5001:5001"
     command: >

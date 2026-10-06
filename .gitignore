@@ -229,3 +229,4 @@ test_gemini.py
 frontend/.env
 frontend/.env.production
 frontend/dist/
+.env

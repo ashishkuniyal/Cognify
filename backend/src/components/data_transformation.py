@@ -28,7 +28,12 @@ class DataTransformation:
         
         '''
         try:
-            numerical_columns = []
+            numerical_columns = [
+                "attendance_rate",
+                "study_hours_per_week",
+                "previous_gpa",
+                "assignment_completion_rate"
+            ]
             categorical_columns = [
                 "gender",
                 "race_ethnicity",
@@ -36,6 +41,13 @@ class DataTransformation:
                 "lunch",
                 "test_preparation_course",
             ]
+
+            num_pipeline=Pipeline(
+                steps=[
+                ("imputer",SimpleImputer(strategy="median")),
+                ("scaler",StandardScaler())
+                ]
+            )
 
             cat_pipeline=Pipeline(
                 steps=[
@@ -49,6 +61,7 @@ class DataTransformation:
 
             preprocessor=ColumnTransformer(
                 [
+                ("num_pipelines",num_pipeline,numerical_columns),
                 ("cat_pipelines",cat_pipeline,categorical_columns)
                 ]
             )
@@ -68,18 +81,20 @@ class DataTransformation:
 
             preprocessing_obj=self.get_data_transformer_object()
 
-            target_columns = ["math_score", "reading_score", "writing_score"]
+            target_columns = ["math_score", "reading_score", "writing_score", "overall_score"]
+            risk_column = "academic_risk"
 
-            input_feature_train_df=train_df.drop(columns=target_columns)
+            input_feature_train_df=train_df.drop(columns=target_columns + [risk_column])
             target_feature_train_df=train_df[target_columns]
             
-            # Feature Engineering: At-Risk Target
-            at_risk_train = (target_feature_train_df.mean(axis=1) < 50).astype(int)
+            # Label encode academic_risk: LOW=0, MEDIUM=1, HIGH=2
+            risk_mapping = {"LOW": 0, "MEDIUM": 1, "HIGH": 2}
+            at_risk_train = train_df[risk_column].map(risk_mapping)
 
-            input_feature_test_df=test_df.drop(columns=target_columns)
+            input_feature_test_df=test_df.drop(columns=target_columns + [risk_column])
             target_feature_test_df=test_df[target_columns]
             
-            at_risk_test = (target_feature_test_df.mean(axis=1) < 50).astype(int)
+            at_risk_test = test_df[risk_column].map(risk_mapping)
 
             logging.info("Applying preprocessing object on training and testing dataframe.")
 
