@@ -103,28 +103,39 @@ export default function App() {
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
   const chatBottomRef = useRef(null);
+  const activeAbortControllerRef = useRef(null);
 
-  // Check backend health on mount
+  // Check backend health on mount and poll periodically
   useEffect(() => {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 4000);
+    let isMounted = true;
+    const checkHealth = () => {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 8000);
 
-    fetch(`${API_URL}/health`, { signal: controller.signal })
-      .then(res => res.json())
-      .then(data => {
-        clearTimeout(timeout);
-        if (data.status === 'healthy' || data.status === 'degraded') {
-          setServerHealth('healthy');
-        } else {
+      fetch(`${API_URL}/health`, { signal: controller.signal })
+        .then(res => res.json())
+        .then(data => {
+          clearTimeout(timeout);
+          if (!isMounted) return;
+          if (data.status === 'healthy' || data.status === 'degraded') {
+            setServerHealth('healthy');
+          } else {
+            setServerHealth('sleeping');
+          }
+        })
+        .catch(() => {
+          clearTimeout(timeout);
+          if (!isMounted) return;
           setServerHealth('sleeping');
-        }
-      })
-      .catch(() => {
-        clearTimeout(timeout);
-        setServerHealth('sleeping');
-      });
+        });
+    };
 
-    return () => clearTimeout(timeout);
+    checkHealth();
+    const interval = setInterval(checkHealth, 25000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
   }, []);
 
   const handleChange = (e) => {
@@ -134,6 +145,13 @@ export default function App() {
 
   const handleSubmit = async (e, forceFallback = false) => {
     if (e) e.preventDefault();
+
+    // Clean up any ongoing request if switching or re-triggering
+    if (activeAbortControllerRef.current) {
+      activeAbortControllerRef.current.abort();
+      activeAbortControllerRef.current = null;
+    }
+
     setLoading(true);
     setError(null);
 
@@ -145,75 +163,142 @@ export default function App() {
         setPrediction(mock);
         setLoading(false);
         setStatusMessage('');
-      }, 350);
+      }, 300);
       return;
     }
 
-    setStatusMessage('Connecting to prediction engine...');
-
     const controller = new AbortController();
-    
-    // Cold start notification after 3.5s
-    const coldStartTimer = setTimeout(() => {
-      setStatusMessage('Backend waking up (Render free tier cold start takes ~45–60s)...');
-    }, 3500);
+    activeAbortControllerRef.current = controller;
 
-    // Hard timeout after 45s so the UI never hangs indefinitely
+    // Track elapsed time for informative cold-start progress
+    let elapsedSeconds = 0;
+    const updateProgress = (customMsg = '') => {
+      if (customMsg) {
+        setStatusMessage(customMsg);
+        return;
+      }
+      if (elapsedSeconds < 4) {
+        setStatusMessage('Connecting to prediction engine...');
+      } else if (elapsedSeconds < 20) {
+        setStatusMessage(`Backend waking up from free-tier standby (${elapsedSeconds}s elapsed)...`);
+      } else if (elapsedSeconds < 45) {
+        setStatusMessage(`Render instance container booting; mounting Python environment (${elapsedSeconds}s elapsed)...`);
+      } else if (elapsedSeconds < 75) {
+        setStatusMessage(`Loading ML weights (XGBoost, Random Forest, SHAP) into memory (${elapsedSeconds}s elapsed)...`);
+      } else {
+        setStatusMessage(`Finalizing inference & multi-engine analytics (${elapsedSeconds}s elapsed)...`);
+      }
+    };
+
+    updateProgress();
+    const progressTimer = setInterval(() => {
+      elapsedSeconds += 1;
+      updateProgress();
+    }, 1000);
+
+    // Extended timeout (100s) to give Render's free tier cold start sufficient time
     const abortTimer = setTimeout(() => {
       controller.abort();
-    }, 45000);
+    }, 100000);
+
+    const maxRetries = 6;
+    const retryDelayMs = 4500;
 
     try {
-      const response = await fetch(`${API_URL}/api/v1/predict`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'X-API-Key': API_KEY
-        },
-        body: JSON.stringify(formData),
-        signal: controller.signal
-      });
+      let finalData = null;
 
-      clearTimeout(coldStartTimer);
-      clearTimeout(abortTimer);
-
-      if (!response.ok) {
-        let errorMsg = `Server error (${response.status})`;
-        try {
-          const errData = await response.json();
-          errorMsg = errData.detail || errData.message || errorMsg;
-        } catch {
-          const rawText = await response.text();
-          if (rawText.includes("502") || rawText.includes("Bad Gateway")) {
-            errorMsg = "Backend server on Render is currently unavailable or restarting (502 Bad Gateway).";
-          } else if (rawText.includes("504")) {
-            errorMsg = "Backend gateway timeout (504). Render instance is taking too long to respond.";
-          }
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        if (controller.signal.aborted) {
+          throw new DOMException('Aborted', 'AbortError');
         }
-        throw new Error(errorMsg);
+
+        try {
+          const response = await fetch(`${API_URL}/api/v1/predict`, {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'X-API-Key': API_KEY
+            },
+            body: JSON.stringify(formData),
+            signal: controller.signal
+          });
+
+          // Render free-tier edge proxy returns 502/503/504 while the container is warming up
+          if ([502, 503, 504].includes(response.status)) {
+            if (attempt < maxRetries && !controller.signal.aborted) {
+              updateProgress(`Server starting up (received HTTP ${response.status}). Retrying in 4s... (Attempt ${attempt}/${maxRetries})`);
+              await new Promise((res, rej) => {
+                const timer = setTimeout(res, retryDelayMs);
+                controller.signal.addEventListener('abort', () => {
+                  clearTimeout(timer);
+                  rej(new DOMException('Aborted', 'AbortError'));
+                });
+              });
+              continue;
+            }
+          }
+
+          if (!response.ok) {
+            let errorMsg = `Server error (${response.status})`;
+            try {
+              const errData = await response.json();
+              errorMsg = errData.detail || errData.message || errorMsg;
+            } catch {
+              const rawText = await response.text();
+              if (rawText.includes("502") || rawText.includes("Bad Gateway")) {
+                errorMsg = "Backend server on Render is currently unavailable or restarting (502 Bad Gateway).";
+              } else if (rawText.includes("504")) {
+                errorMsg = "Backend gateway timeout (504). Render instance is taking too long to respond.";
+              }
+            }
+            throw new Error(errorMsg);
+          }
+
+          const data = await response.json();
+          if (!data || typeof data.overall_score !== 'number') {
+            throw new Error("Invalid response format received from inference server.");
+          }
+
+          finalData = data;
+          break;
+        } catch (fetchErr) {
+          if (fetchErr.name === 'AbortError') throw fetchErr;
+
+          // Transient cold-start network disconnect: retry if attempts remain
+          if (attempt < maxRetries && !controller.signal.aborted) {
+            updateProgress(`Connecting to waking backend... Retrying in 4s (Attempt ${attempt}/${maxRetries})`);
+            await new Promise((res, rej) => {
+              const timer = setTimeout(res, retryDelayMs);
+              controller.signal.addEventListener('abort', () => {
+                clearTimeout(timer);
+                rej(new DOMException('Aborted', 'AbortError'));
+              });
+            });
+            continue;
+          }
+          throw fetchErr;
+        }
       }
 
-      const data = await response.json();
-      if (!data || typeof data.overall_score !== 'number') {
-        throw new Error("Invalid response format received from inference server.");
+      if (finalData) {
+        setPrediction(finalData);
+        setServerHealth('healthy');
+        setStatusMessage('');
       }
-
-      setPrediction(data);
-      setServerHealth('healthy');
-      setStatusMessage('');
     } catch (err) {
-      clearTimeout(coldStartTimer);
-      clearTimeout(abortTimer);
       console.warn("Prediction fetch failed:", err);
 
       let msg = err.message || "Failed to reach inference server.";
       if (err.name === 'AbortError') {
-        msg = "Request timed out after 45s. The Render free-tier backend is taking too long to cold start.";
+        msg = "Request timed out after 100s. The Render free-tier backend is taking longer than expected to cold start.";
       } else if (err.message === 'Failed to fetch') {
-        msg = `Unable to connect to backend at ${API_URL}. The Render service may be asleep or blocked by CORS.`;
+        msg = `Unable to connect to backend at ${API_URL}. The Render service may be asleep or restarting.`;
       }
       setError(msg);
     } finally {
+      clearInterval(progressTimer);
+      clearTimeout(abortTimer);
+      activeAbortControllerRef.current = null;
       setLoading(false);
     }
   };
@@ -446,9 +531,29 @@ export default function App() {
 
               {/* Status indicator during cold start or loading */}
               {loading && statusMessage && (
-                <div className="status-pill">
-                  <span className="pulsing-dot"></span>
-                  <span>{statusMessage}</span>
+                <div className="status-pill" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span className="pulsing-dot"></span>
+                    <span>{statusMessage}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => handleSubmit(e, true)}
+                    style={{
+                      background: 'rgba(20, 184, 166, 0.15)',
+                      border: '1px solid rgba(20, 184, 166, 0.4)',
+                      color: '#14b8a6',
+                      borderRadius: '4px',
+                      padding: '2px 8px',
+                      fontSize: '0.74rem',
+                      cursor: 'pointer',
+                      fontWeight: '500',
+                      whiteSpace: 'nowrap'
+                    }}
+                    title="Skip cold start waiting and preview the dashboard instantly"
+                  >
+                    Skip wait & load demo
+                  </button>
                 </div>
               )}
 
