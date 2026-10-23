@@ -1,0 +1,17 @@
+name: Keep Backend Alive
+
+on:
+  schedule:
+    # Run every 10 minutes to prevent Render free tier from sleeping (sleep threshold is 15m)
+    - cron: '*/10 * * * *'
+  workflow_dispatch: # Allows manual trigger from GitHub UI
+
+jobs:
+  ping:
+    name: Ping Render Health Endpoint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Cognify Render Backend
+        run: |
+          response=$(curl -s -o /dev/null -w "%{http_code}" -m 45 https://intelligent-edtech-platform.onrender.com/health || echo "FAILED")
+          echo "Health check HTTP status: $response"
