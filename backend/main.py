@@ -122,14 +122,24 @@ All production endpoints are versioned under `/api/v1/`.
 # CORS — Allow frontend origins
 # ---------------------------------------------------------------------------
 
-ALLOWED_ORIGINS = os.environ.get(
-    "ALLOWED_ORIGINS",
-    "http://localhost:5173,http://localhost:4173,http://localhost:3000"
-).split(",")
+DEFAULT_ORIGINS = [
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "http://localhost:4173",
+    "http://localhost:3000",
+    "https://cognify-edtech.vercel.app",
+    "https://intelligent-ed-tech-platform.vercel.app",
+]
+
+env_origins = os.environ.get("ALLOWED_ORIGINS", "")
+ALLOWED_ORIGINS = list({
+    orig.strip() for orig in DEFAULT_ORIGINS + [o.strip() for o in env_origins.split(",") if o.strip()]
+})
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
+    allow_origin_regex=r"https:\/\/.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

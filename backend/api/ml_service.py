@@ -51,18 +51,26 @@ class MLService:
             logger.info("[INIT] Initializing ML Engine Service...")
             self._pipeline = PredictPipeline()
 
-            # Verify artifacts exist
-            required_artifacts = [
-                "artifacts/preprocessor.pkl",
-                "artifacts/model_radar.pkl",
-                "artifacts/model_atrisk.pkl",
-                "artifacts/model_cluster.pkl",
-                "artifacts/model_anomaly.pkl"
+            # Verify artifacts exist dynamically
+            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            candidate_dirs = [
+                os.path.join(base_dir, "artifacts"),
+                os.path.join(os.getcwd(), "artifacts"),
+                os.path.join(os.getcwd(), "backend", "artifacts"),
             ]
-            missing = [a for a in required_artifacts if not os.path.exists(a)]
+            artifacts_dir = next((d for d in candidate_dirs if os.path.exists(d)), candidate_dirs[0])
+
+            required_files = [
+                "preprocessor.pkl",
+                "model_radar.pkl",
+                "model_atrisk.pkl",
+                "model_cluster.pkl",
+                "model_anomaly.pkl"
+            ]
+            missing = [f for f in required_files if not os.path.exists(os.path.join(artifacts_dir, f))]
             if missing:
                 raise FileNotFoundError(
-                    f"Missing model artifacts: {missing}. "
+                    f"Missing model artifacts in {artifacts_dir}: {missing}. "
                     "Run: python -m src.components.data_ingestion"
                 )
 

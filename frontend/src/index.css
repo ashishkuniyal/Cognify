@@ -430,3 +430,59 @@ input[type="range"] {
   outline: none;
   cursor: pointer;
 }
+
+@keyframes pulseGlow {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.9); }
+}
+
+.pulsing-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #14b8a6;
+  display: inline-block;
+  animation: pulseGlow 1.4s ease-in-out infinite;
+}
+
+.status-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(20, 184, 166, 0.08);
+  border: 1px solid rgba(20, 184, 166, 0.25);
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin-top: 12px;
+  font-size: 0.82rem;
+  color: #5eead4;
+}
+
+.error-banner {
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 8px;
+  padding: 14px;
+  margin-top: 14px;
+  color: #fca5a5;
+  font-size: 0.85rem;
+}
+
+.btn-demo-fallback {
+  background: transparent;
+  color: #14b8a6;
+  border: 1px dashed rgba(20, 184, 166, 0.4);
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  width: 100%;
+  margin-top: 10px;
+  transition: all 0.2s;
+}
+
+.btn-demo-fallback:hover {
+  background: rgba(20, 184, 166, 0.1);
+  border-color: #14b8a6;
+}

@@ -13,11 +13,20 @@ class PredictPipeline:
 
     def predict(self, features):
         try:
-            preprocessor_path = os.path.join('artifacts', 'preprocessor.pkl')
-            radar_model_path = os.path.join("artifacts", "model_radar.pkl")
-            atrisk_model_path = os.path.join("artifacts", "model_atrisk.pkl")
-            cluster_model_path = os.path.join("artifacts", "model_cluster.pkl")
-            anomaly_model_path = os.path.join("artifacts", "model_anomaly.pkl")
+            # Resolve artifacts directory dynamically
+            base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            candidate_dirs = [
+                os.path.join(base_dir, "artifacts"),
+                os.path.join(os.getcwd(), "artifacts"),
+                os.path.join(os.getcwd(), "backend", "artifacts"),
+            ]
+            artifacts_dir = next((d for d in candidate_dirs if os.path.exists(d)), candidate_dirs[0])
+
+            preprocessor_path = os.path.join(artifacts_dir, 'preprocessor.pkl')
+            radar_model_path = os.path.join(artifacts_dir, "model_radar.pkl")
+            atrisk_model_path = os.path.join(artifacts_dir, "model_atrisk.pkl")
+            cluster_model_path = os.path.join(artifacts_dir, "model_cluster.pkl")
+            anomaly_model_path = os.path.join(artifacts_dir, "model_anomaly.pkl")
 
             preprocessor = load_object(file_path=preprocessor_path)
             radar_model = load_object(file_path=radar_model_path)
